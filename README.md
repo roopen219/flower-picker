@@ -2,11 +2,17 @@ Forked from https://github.com/ultralytics/yolov3
 
 # Requirements
 
-Python 3.7 or later with the following `pip3 install -U -r requirements.txt` packages:
+Python 3.7 or later with the following packages:
 
 - `numpy`
 - `torch`
 - `opencv-python`
+
+**Install them via pip**
+
+```
+pip3 install -U -r requirements.txt
+```
 
 # Setting up the environment
 
