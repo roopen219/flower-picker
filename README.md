@@ -1,5 +1,3 @@
-# Introduction
-
 Forked from https://github.com/ultralytics/yolov3
 
 # Requirements
@@ -20,6 +18,8 @@ Put the images you want to detect flowers in into the `data/samples/flower` fold
 ```
 python detect.py
 ```
+
+Check the `output` folder for results which are images with bounding boxes.
 
 # Training
 
