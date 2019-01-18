@@ -22,7 +22,7 @@ def load_classes(path):
     """
     Loads class labels at 'path'
     """
-    fp = open('data/coco.names', 'r')
+    fp = open(path, 'r')
     names = fp.read().split('\n')
     return list(filter(None, names))  # filter removes empty strings (such as last line)
 
@@ -36,17 +36,6 @@ def model_info(model):  # Plots a line-by-line description of a PyTorch model
         print('%5g %50s %9s %12g %20s %12.3g %12.3g' % (
             i, name, p.requires_grad, p.numel(), list(p.shape), p.mean(), p.std()))
     print('Model Summary: %g layers, %g parameters, %g gradients\n' % (i + 1, n_p, n_g))
-
-
-def class_weights():  # frequency of each class in coco train2014
-    weights = 1 / torch.FloatTensor(
-        [187437, 4955, 30920, 6033, 3838, 4332, 3160, 7051, 7677, 9167, 1316, 1372, 833, 6757, 7355, 3302, 3776, 4671,
-         6769, 5706, 3908, 903, 3686, 3596, 6200, 7920, 8779, 4505, 4272, 1862, 4698, 1962, 4403, 6659, 2402, 2689,
-         4012, 4175, 3411, 17048, 5637, 14553, 3923, 5539, 4289, 10084, 7018, 4314, 3099, 4638, 4939, 5543, 2038, 4004,
-         5053, 4578, 27292, 4113, 5931, 2905, 11174, 2873, 4036, 3415, 1517, 4122, 1980, 4464, 1190, 2302, 156, 3933,
-         1877, 17630, 4337, 4624, 1075, 3468, 135, 1380])
-    weights /= weights.sum()
-    return weights
 
 
 def plot_one_box(x, img, color=None, label=None, line_thickness=None):  # Plots one bounding box on image img
@@ -212,9 +201,6 @@ def build_targets(pred_boxes, pred_conf, pred_cls, target, anchor_wh, nA, nC, nG
     th = torch.zeros(nB, nA, nG, nG)
     tconf = torch.ByteTensor(nB, nA, nG, nG).fill_(0)
     tcls = torch.ByteTensor(nB, nA, nG, nG, nC).fill_(0)  # nC = number of classes
-    TP = torch.ByteTensor(nB, max(nT)).fill_(0)
-    FP = torch.ByteTensor(nB, max(nT)).fill_(0)
-    FN = torch.ByteTensor(nB, max(nT)).fill_(0)
     TC = torch.ShortTensor(nB, max(nT)).fill_(-1)  # target category
 
     for b in range(nB):
@@ -245,7 +231,6 @@ def build_targets(pred_boxes, pred_conf, pred_cls, target, anchor_wh, nA, nC, nG
             # Unique anchor selection
             u = torch.cat((gi, gj, a), 0).view(3, -1)
             _, first_unique = np.unique(u[:, iou_order], axis=1, return_index=True)  # first unique indices
-            # _, first_unique = torch.unique(u[:, iou_order], dim=1, return_inverse=True)  # different than numpy?
 
             i = iou_order[first_unique]
             # best anchor must share significant commonality (iou) with target
@@ -267,30 +252,15 @@ def build_targets(pred_boxes, pred_conf, pred_cls, target, anchor_wh, nA, nC, nG
         tx[b, a, gj, gi] = gx - gi.float()
         ty[b, a, gj, gi] = gy - gj.float()
 
-        # Width and height (yolo method)
+        # Width and height
         tw[b, a, gj, gi] = torch.log(gw / anchor_wh[a, 0])
         th[b, a, gj, gi] = torch.log(gh / anchor_wh[a, 1])
-
-        # Width and height (power method)
-        # tw[b, a, gj, gi] = torch.sqrt(gw / anchor_wh[a, 0]) / 2
-        # th[b, a, gj, gi] = torch.sqrt(gh / anchor_wh[a, 1]) / 2
 
         # One-hot encoding of label
         tcls[b, a, gj, gi, tc] = 1
         tconf[b, a, gj, gi] = 1
 
-        if batch_report:
-            # predicted classes and confidence
-            tb = torch.cat((gx - gw / 2, gy - gh / 2, gx + gw / 2, gy + gh / 2)).view(4, -1).t()  # target boxes
-            pcls = torch.argmax(pred_cls[b, a, gj, gi], 1).cpu()
-            pconf = torch.sigmoid(pred_conf[b, a, gj, gi]).cpu()
-            iou_pred = bbox_iou(tb, pred_boxes[b, a, gj, gi].cpu())
-
-            TP[b, i] = (pconf > 0.5) & (iou_pred > 0.5) & (pcls == tc)
-            FP[b, i] = (pconf > 0.5) & (TP[b, i] == 0)  # coordinates or class are wrong
-            FN[b, i] = pconf <= 0.5  # confidence score is too low (set to zero)
-
-    return tx, ty, tw, th, tconf, tcls, TP, FP, FN, TC
+    return tx, ty, tw, th, tconf, tcls, TC
 
 
 def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
@@ -425,24 +395,11 @@ def strip_optimizer_from_checkpoint(filename='weights/best.pt'):
     torch.save(a, filename.replace('.pt', '_lite.pt'))
 
 
-def coco_class_count(path='../coco/labels/train2014/'):
-    import glob
-
-    nC = 80  # number classes
-    x = np.zeros(nC, dtype='int32')
-    files = sorted(glob.glob('%s/*.*' % path))
-    for i, file in enumerate(files):
-        labels = np.loadtxt(file, dtype=np.float32).reshape(-1, 5)
-        x += np.bincount(labels[:, 0].astype('int32'), minlength=nC)
-        print(i, len(files))
-
-
 def plot_results():
     # Plot YOLO training results file 'results.txt'
     import glob
     import numpy as np
     import matplotlib.pyplot as plt
-    # import os; os.system('rm -rf results.txt && wget https://storage.googleapis.com/ultralytics/results_v1_0.txt')
     plt.figure(figsize=(16, 8))
     s = ['X', 'Y', 'Width', 'Height', 'Objectness', 'Classification', 'Total Loss', 'Precision', 'Recall', 'mAP']
     files = sorted(glob.glob('results*.txt'))

@@ -1,0 +1,6 @@
+classes= 2
+train=data/flower/train.txt
+valid=data/flower/valid.txt
+names=data/flower.names
+backup=backup/
+eval=flower

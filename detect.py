@@ -147,13 +147,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Get data configuration
 
-    parser.add_argument('--image-folder', type=str, default='data/samples', help='path to images')
+    parser.add_argument('--image-folder', type=str, default='data/samples/flower', help='path to images')
     parser.add_argument('--output-folder', type=str, default='output', help='path to outputs')
     parser.add_argument('--plot-flag', type=bool, default=True)
     parser.add_argument('--txt-out', type=bool, default=False)
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3.cfg', help='cfg file path')
-    parser.add_argument('--data-config', type=str, default='cfg/coco.data', help='path to data config file')
-    parser.add_argument('--weights', type=str, default='weights/yolov3.pt', help='path to weights file')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3-flower.cfg', help='cfg file path')
+    parser.add_argument('--data-config', type=str, default='cfg/flower.data', help='path to data config file')
+    parser.add_argument('--weights', type=str, default='weights/best.pt', help='path to weights file')
     parser.add_argument('--conf-thres', type=float, default=0.50, help='object confidence threshold')
     parser.add_argument('--nms-thres', type=float, default=0.45, help='iou threshold for non-maximum suppression')
     parser.add_argument('--batch-size', type=int, default=1, help='size of the batches')
